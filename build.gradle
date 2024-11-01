@@ -1,0 +1,129 @@
+plugins {
+    id 'org.springframework.boot' version '3.2.0'
+    id 'io.spring.dependency-management' version '1.1.4'
+    id 'java'
+    id 'com.google.cloud.tools.jib' version '3.4.0'  // Docker 이미지 빌드용
+}
+
+group = 'com.tlc.test'
+version = '0.0.1'
+sourceCompatibility = '17'
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    finalName = 'backend-service-1-exlukofpep'
+    dockerRegistry = ''
+    dockerName = ''
+    dockerTag = ''
+    springProfile = ''
+
+    dockerRegistry = project.hasProperty('dockerRegistry') ? project.getProperty('dockerRegistry') : 'default'
+    dockerUser = project.hasProperty('dockerUser') ? project.getProperty('dockerUser') : 'default'
+    dockerPassword = project.hasProperty('dockerPassword') ? project.getProperty('dockerPassword') : 'default'
+    commitRev = project.hasProperty('commitRev') ? project.getProperty('commitRev') : 'latest'
+    serviceName = project.hasProperty('serviceName') ? project.getProperty('serviceName') : 'default'
+}
+
+dependencies {
+    implementation 'org.mariadb.jdbc:mariadb-java-client:3.3.2'
+    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
+    // Spring Boot
+    implementation('org.springframework.boot:spring-boot-starter') {
+        exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
+    }
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-log4j2'
+
+    // JWT
+    implementation 'com.nimbusds:nimbus-jose-jwt:8.9'
+
+    // Utility
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'com.googlecode.log4jdbc:log4jdbc:1.2'
+    implementation 'org.json:json:20220320'
+
+    // Swagger
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.1.0'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // Testing
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    implementation 'org.assertj:assertj-core:3.24.2'
+
+    // Other
+    implementation 'com.intellij:annotations:9.0.4'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+bootJar {
+    archiveFileName = 'backend-service-1-exlukofpep.jar'
+    mainClass = 'com.tlc.test.Main'
+}
+
+// Profiles configuration
+//def activeProfile = project.hasProperty('profile') ? project.property('profile') : 'default'
+
+processResources {
+    filesMatching('**/application.yml') {
+        expand(project.properties)
+    }
+}
+
+// Docker configuration using jib
+jib {
+    from {
+        image = 'openjdk:17-jdk-slim'
+    }
+    to {
+        image = "${dockerRegistry}/${dockerName}"
+        tags = ["${dockerTag}", 'latest']
+    }
+    container {
+        environment = [
+                'SPRING_PROFILES_ACTIVE': "${springProfile}"
+        ]
+        jvmFlags = ['-Xms512m', '-Xmx512m']
+    }
+}
+
+// Custom tasks for version checking (similar to versions-maven-plugin)
+tasks.register('displayDependencyUpdates') {
+    doLast {
+        println "Checking for dependency updates..."
+        // This is a simplified version. You might want to use the gradle-versions-plugin
+        // for more comprehensive dependency checking
+    }
+}
+
+tasks.register('displayPluginUpdates') {
+    doLast {
+        println "Checking for plugin updates..."
+        // Similar to above
+    }
+}
+
+// Enforcing Gradle version (similar to maven-enforcer-plugin)
+task enforceGradleVersion {
+    doLast {
+        if (GradleVersion.current() < GradleVersion.version('7.0')) {
+            throw new GradleException('Minimum Gradle version required is 7.0')
+        }
+    }
+}
+
+compileJava.dependsOn enforceGradleVersion
